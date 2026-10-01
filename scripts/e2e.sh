@@ -15,7 +15,7 @@ field() { # url jq-filter
 
 run() { # name productId quantity amount expectedOrder expectedPayment expectedReservation expectedSaga
   local name=$1 key
-  key=$(uuidgen)
+  key=$(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid)
   local order
   order=$(curl -sf -X POST "$ORDER_URL/orders" -H 'Content-Type: application/json' -H "Idempotency-Key: $key" \
     -d "{\"productId\":\"$2\",\"quantity\":$3,\"amount\":$4}")
