@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.16</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.example.saga</groupId>
+    <artifactId>sb-saga-pattern-kafka</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Orchestration Saga - Spring Boot + Kafka</name>
+
+    <modules>
+        <module>saga-messages</module>
+        <module>saga-common</module>
+        <module>order-service</module>
+        <module>payment-service</module>
+        <module>inventory-service</module>
+        <module>saga-orchestrator-service</module>
+    </modules>
+
+    <properties>
+        <java.version>17</java.version>
+        <spring-cloud-aws.version>3.4.2</spring-cloud-aws.version>
+        <aws-msk-iam-auth.version>2.3.9</aws-msk-iam-auth.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.awspring.cloud</groupId>
+                <artifactId>spring-cloud-aws-dependencies</artifactId>
+                <version>${spring-cloud-aws.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.msk</groupId>
+                <artifactId>aws-msk-iam-auth</artifactId>
+                <version>${aws-msk-iam-auth.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.example.saga</groupId>
+                <artifactId>saga-messages</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.example.saga</groupId>
+                <artifactId>saga-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

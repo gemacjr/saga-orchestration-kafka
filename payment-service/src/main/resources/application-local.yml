@@ -1,0 +1,27 @@
+# Local development: AWS APIs are served by LocalStack (seeded by localstack/init/ready.d/seed-aws.sh)
+spring:
+  config:
+    import:
+      - aws-secretsmanager:saga/payment-service/db?prefix=db.
+      - aws-parameterstore:/saga/shared/;/saga/payment-service/
+  cloud:
+    aws:
+      endpoint: ${AWS_ENDPOINT_URL:http://localhost:4566}
+      region:
+        static: us-east-1
+      credentials:
+        access-key: test
+        secret-key: test
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+
+saga:
+  kafka:
+    topics:
+      create: true
+      partitions: 3
+      replicas: 1
+
+logging:
+  level:
+    com.example.saga: DEBUG

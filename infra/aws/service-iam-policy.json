@@ -1,0 +1,45 @@
+{
+  "Version": "2012-10-17",
+  "Comment": "Task/pod role for ONE saga service. Replace <service>, <region>, <account>, <cluster-name>, <cluster-uuid>.",
+  "Statement": [
+    {
+      "Sid": "ReadOwnConfig",
+      "Effect": "Allow",
+      "Action": ["ssm:GetParametersByPath", "ssm:GetParameters", "ssm:GetParameter"],
+      "Resource": [
+        "arn:aws:ssm:<region>:<account>:parameter/saga/shared/*",
+        "arn:aws:ssm:<region>:<account>:parameter/saga/<service>/*"
+      ]
+    },
+    {
+      "Sid": "ReadOwnDbSecret",
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue"],
+      "Resource": "arn:aws:secretsmanager:<region>:<account>:secret:saga/<service>/db-*"
+    },
+    {
+      "Sid": "MskConnect",
+      "Effect": "Allow",
+      "Action": ["kafka-cluster:Connect", "kafka-cluster:DescribeCluster"],
+      "Resource": "arn:aws:kafka:<region>:<account>:cluster/<cluster-name>/<cluster-uuid>"
+    },
+    {
+      "Sid": "MskTopics",
+      "Effect": "Allow",
+      "Action": ["kafka-cluster:DescribeTopic", "kafka-cluster:ReadData", "kafka-cluster:WriteData"],
+      "Resource": "arn:aws:kafka:<region>:<account>:topic/<cluster-name>/<cluster-uuid>/saga.*"
+    },
+    {
+      "Sid": "MskConsumerGroup",
+      "Effect": "Allow",
+      "Action": ["kafka-cluster:AlterGroup", "kafka-cluster:DescribeGroup"],
+      "Resource": "arn:aws:kafka:<region>:<account>:group/<cluster-name>/<cluster-uuid>/<service>"
+    },
+    {
+      "Sid": "IdempotentProducer",
+      "Effect": "Allow",
+      "Action": ["kafka-cluster:WriteDataIdempotently"],
+      "Resource": "arn:aws:kafka:<region>:<account>:cluster/<cluster-name>/<cluster-uuid>"
+    }
+  ]
+}

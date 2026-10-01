@@ -1,0 +1,8 @@
+package com.example.saga.messages.events;
+
+import com.example.saga.messages.SagaMessage;
+
+import java.util.UUID;
+
+public record InventoryFailedEvent(UUID sagaId, UUID orderId, String reason) implements SagaMessage {
+}

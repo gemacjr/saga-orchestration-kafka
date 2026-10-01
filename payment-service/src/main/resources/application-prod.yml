@@ -1,0 +1,31 @@
+# Production on AWS: RDS PostgreSQL + Amazon MSK (IAM auth). Credentials come from the default AWS
+# provider chain (ECS task role / EKS IRSA / EC2 instance profile); region from AWS_REGION.
+spring:
+  config:
+    import:
+      # Secret with {"username": "...", "password": "..."} (e.g. the RDS-managed master secret)
+      - aws-secretsmanager:${DB_SECRET_ID:saga/payment-service/db}?prefix=db.
+      # /saga/shared/spring.kafka.bootstrap-servers, /saga/payment-service/db.host, /saga/payment-service/db.name, business settings...
+      - aws-parameterstore:/saga/shared/;/saga/payment-service/
+  datasource:
+    url: jdbc:postgresql://${db.host}:${db.port:5432}/${db.name}?sslmode=require
+    hikari:
+      maximum-pool-size: 20
+  kafka:
+    security:
+      protocol: SASL_SSL
+    properties:
+      sasl.mechanism: AWS_MSK_IAM
+      sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
+      sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+
+saga:
+  kafka:
+    topics:
+      # Topics + DLTs are provisioned by infrastructure-as-code (replication factor 3, min.insync.replicas 2)
+      create: false
+
+logging:
+  structured:
+    format:
+      console: ecs

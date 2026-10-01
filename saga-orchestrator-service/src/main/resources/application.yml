@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: saga-orchestrator-service
+  profiles:
+    # "local" = LocalStack + docker compose; deployments set SPRING_PROFILES_ACTIVE=prod
+    default: local
+  # db.* comes from AWS: db.host / db.name from SSM Parameter Store, db.username / db.password from Secrets Manager
+  datasource:
+    url: jdbc:postgresql://${db.host}:${db.port:5432}/${db.name}
+    username: ${db.username}
+    password: ${db.password}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration,classpath:db/saga-common
+  kafka:
+    consumer:
+      group-id: ${spring.application.name}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        linger.ms: 5
+    listener:
+      concurrency: 3
+      observation-enabled: true
+    template:
+      observation-enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: 8093
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+saga:
+  kafka:
+    retry:
+      max-retries: 4
+      initial-interval: 500ms
+      max-interval: 10s
+  outbox:
+    batch-size: 100
+    retention: 7d
