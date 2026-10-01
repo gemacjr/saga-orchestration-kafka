@@ -10,4 +10,16 @@
     </parent>
     <artifactId>saga-messages</artifactId>
     <description>Message contracts (commands, events, topics) shared by all saga participants. Plain Java, no Spring.</description>
+    <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>

@@ -84,7 +84,7 @@ Prefer IaC, though, and **don't** use the demo secrets.
 | Poison pills, transient errors | `ErrorHandlingDeserializer`, exponential backoff, then `<topic>-dlt`; `NonRetryableSagaException` skips retries |
 | Schema evolution / security | Wire type = logical name (`OrderCreated.v1`), not a Java class; unknown classes are rejected |
 | Ordering | Saga id is the Kafka key, so all messages of one saga share a partition |
-| Unresponsive participants | `SagaTimeoutWatcher` finds stuck sagas (`saga.orchestrator.step-timeout`); policy in `SagaOrchestrator.onStepTimeout` |
+| Unresponsive participants | `SagaTimeoutWatcher` finds stuck sagas (`saga.orchestrator.step-timeout`). `onStepTimeout` re-sends the command up to `max-step-retries`, then compensates; steps past the point of no return keep re-sending and increment `saga.stuck` for alerting |
 | Refund before charge race | Payment records a `VOIDED` tombstone so a late `ProcessPayment` cannot charge |
 | Stock races | Single-statement conditional `UPDATE … WHERE available >= ?` |
 | Schema management | Flyway per service (+ shared outbox/inbox migration from `saga-common`), `ddl-auto=validate` |
@@ -95,5 +95,18 @@ The inbox ensures that an already applied message stays a no-op.
 
 ## Tests
 
-`mvn test` runs the saga state machine unit tests and the message deserialization contract tests (type header
-resolution, gadget-class rejection). `scripts/e2e.sh` runs the full system test against the compose stack.
+`mvn verify` runs about 160 tests and **fails the build if any module drops below 95% line / 85% branch coverage** (JaCoCo).
+It needs Docker for Testcontainers. The aggregated report is at `coverage-report/target/site/jacoco-aggregate/index.html`.
+
+| Layer | What it proves |
+|---|---|
+| Unit: `SagaInstanceTest`, `SagaTransitionGuardTest` | Every transition, tried from every state: allowed only from its source state, never changes state otherwise |
+| Unit: `SagaTimeoutPolicyTest`, `SagaTimeoutWatcherTest` | Retry → compensate → stuck-alert policy; one failing saga doesn't stop the timeout scan |
+| Unit: domain + handler tests | Idempotent order/payment transitions; every Kafka handler consults the inbox |
+| Contract: `MessageJsonContractTest`, `SagaJsonDeserializerTest` | Every message round-trips through JSON; logical type headers resolve; gadget classes are rejected |
+| Integration: `SagaCommonIntegrationTest` (Postgres + Kafka) | Outbox commit/rollback/order/purge, inbox, retry-then-succeed, retries-then-DLT, non-retryable → DLT, poison pill → DLT with original bytes |
+| Integration: one per service (Postgres + Kafka) | The test plays the other saga participants: commands in, DB state + reply events out, duplicates, late events, DLT, REST API |
+| Integration: `InventoryServiceIntegrationTest` | 25 concurrent reservations on 10 units of stock reserve exactly 10 (no oversell) |
+| Integration: `PaymentServiceIntegrationTest` | Refund before charge leaves a `VOIDED` record, and the late charge is blocked |
+| AWS: `LocalProfileAwsConfigIntegrationTest` (LocalStack) | The real `local` profile loads DB credentials from Secrets Manager plus DB location and the business limit from SSM. A missing secret fails startup. |
+| System: `scripts/e2e.sh` | The article's three scenarios against the full docker compose stack |

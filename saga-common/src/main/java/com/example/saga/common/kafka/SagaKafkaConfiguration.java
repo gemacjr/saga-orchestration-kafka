@@ -12,13 +12,13 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.kafka.DefaultKafkaConsumerFactoryCustomizer;
-import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
@@ -65,9 +65,9 @@ public class SagaKafkaConfiguration {
 
     /** Retries transient failures with exponential backoff, then parks the record on {@code <topic>-dlt}. */
     @Bean
-    CommonErrorHandler sagaErrorHandler(KafkaProperties kafkaProperties, SagaProperties sagaProperties) {
+    CommonErrorHandler sagaErrorHandler(ProducerFactory<?, ?> producerFactory, SagaProperties sagaProperties) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
-                deadLetterTemplate(kafkaProperties),
+                deadLetterTemplate(producerFactory),
                 // partition -1: let the key choose, so DLTs need not mirror the source partition count
                 (record, ex) -> new TopicPartition(record.topic() + SagaTopics.DLT_SUFFIX, -1));
 
@@ -93,15 +93,15 @@ public class SagaKafkaConfiguration {
 
     /**
      * Dead letters are either raw bytes (deserialization failed) or the already deserialized payload
-     * (handler failed), so the DLT producer picks a serializer by value type. Uses the same connection
-     * settings (including MSK IAM in prod) as the main producer.
+     * (handler failed), so the DLT producer picks a serializer by value type. It copies the configuration of
+     * Boot's producer factory, so it gets the same connection (Boot ConnectionDetails, MSK IAM in prod).
      */
-    private static KafkaTemplate<Object, Object> deadLetterTemplate(KafkaProperties kafkaProperties) {
+    private static KafkaTemplate<Object, Object> deadLetterTemplate(ProducerFactory<?, ?> producerFactory) {
         Map<Class<?>, Serializer<?>> serializers = new LinkedHashMap<>();
         serializers.put(byte[].class, new ByteArraySerializer());
         serializers.put(Object.class, new JsonSerializer<>().noTypeInfo());
         DefaultKafkaProducerFactory<Object, Object> factory = new DefaultKafkaProducerFactory<>(
-                kafkaProperties.buildProducerProperties(null),
+                producerFactory.getConfigurationProperties(),
                 stringKeys(),
                 new DelegatingByTypeSerializer(serializers, true));
         return new KafkaTemplate<>(factory);

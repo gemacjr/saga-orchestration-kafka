@@ -51,6 +51,14 @@ run() { # name productId quantity amount expectedOrder expectedPayment expectedR
   fi
 }
 
+for url in "$ORDER_URL" "$PAYMENT_URL" "$INVENTORY_URL" "$SAGA_URL"; do
+  for _ in $(seq 1 60); do
+    curl -sf "$url/actuator/health/readiness" >/dev/null && break
+    sleep 2
+  done
+  curl -sf "$url/actuator/health/readiness" >/dev/null || { echo "Not ready: $url"; exit 1; }
+done
+
 echo "Saga end-to-end scenarios"
 run "happy path"                 product-100 2  250.00  COMPLETED COMPLETED RESERVED COMPLETED
 run "payment failure"            product-200 2  1500.00 CANCELLED FAILED    -        FAILED
