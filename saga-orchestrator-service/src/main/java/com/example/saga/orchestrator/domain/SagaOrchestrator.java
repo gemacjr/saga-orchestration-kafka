@@ -80,9 +80,24 @@ public class SagaOrchestrator {
      * {@code properties.maxStepRetries()} is the configured retry budget.
      */
     void onStepTimeout(SagaInstance saga) {
-        // TODO: decide between re-sending the command and compensating, per status.
-        log.warn("Saga {} timed out in {} ({} time(s)); no timeout policy implemented yet",
-                saga.getSagaId(), saga.getStatus(), saga.getStepTimeouts());
+        if (saga.getStepTimeouts() <= properties.maxStepRetries()) {
+            log.warn("Saga {} timed out in {}, re-sending command (attempt {}/{})",
+                    saga.getSagaId(), saga.getStatus(), saga.getStepTimeouts(), properties.maxStepRetries());
+            dispatch(saga);
+            return;
+        }
+        SagaStatus stuckIn = saga.getStatus();
+        if (saga.startCompensation("Timed out in " + stuckIn)) {
+            log.warn("Saga {} exhausted retries in {}, compensating", saga.getSagaId(), stuckIn);
+            dispatch(saga);
+            return;
+        }
+        // Past the point of no return (order completion or compensation in flight): these steps must
+        // eventually succeed, so keep re-sending and alert an operator.
+        log.error("Saga {} stuck in {} after {} timeouts and cannot be compensated; re-sending, needs attention",
+                saga.getSagaId(), stuckIn, saga.getStepTimeouts());
+        meterRegistry.counter("saga.stuck", "status", stuckIn.name()).increment();
+        dispatch(saga);
     }
 
     /** The current state fully determines the next command. Terminal states only record the outcome. */

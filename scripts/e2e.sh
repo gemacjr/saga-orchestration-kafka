@@ -15,7 +15,7 @@ field() { # url jq-filter
 
 run() { # name productId quantity amount expectedOrder expectedPayment expectedReservation expectedSaga
   local name=$1 key
-  key=$(uuidgen)
+  key=$(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid)
   local order
   order=$(curl -sf -X POST "$ORDER_URL/orders" -H 'Content-Type: application/json' -H "Idempotency-Key: $key" \
     -d "{\"productId\":\"$2\",\"quantity\":$3,\"amount\":$4}")
@@ -50,6 +50,14 @@ run() { # name productId quantity amount expectedOrder expectedPayment expectedR
     failures=$((failures + 1))
   fi
 }
+
+for url in "$ORDER_URL" "$PAYMENT_URL" "$INVENTORY_URL" "$SAGA_URL"; do
+  for _ in $(seq 1 60); do
+    curl -sf "$url/actuator/health/readiness" >/dev/null && break
+    sleep 2
+  done
+  curl -sf "$url/actuator/health/readiness" >/dev/null || { echo "Not ready: $url"; exit 1; }
+done
 
 echo "Saga end-to-end scenarios"
 run "happy path"                 product-100 2  250.00  COMPLETED COMPLETED RESERVED COMPLETED

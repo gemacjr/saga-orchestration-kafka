@@ -1,0 +1,46 @@
+# Integration-test profile: Postgres and Kafka come from Testcontainers (@ServiceConnection), so AWS config
+# import is not used here. The AWS/LocalStack path is covered separately by LocalProfileAwsConfigIntegrationTest.
+spring:
+  cloud:
+    aws:
+      region:
+        static: us-east-1
+      credentials:
+        access-key: test
+        secret-key: test
+      secretsmanager:
+        enabled: false
+      parameterstore:
+        enabled: false
+  kafka:
+    listener:
+      concurrency: 1
+
+db:
+  host: unused-overridden-by-service-connection
+  name: unused
+  username: unused
+  password: unused
+
+saga:
+  kafka:
+    topics:
+      create: true
+      partitions: 1
+      replicas: 1
+    retry:
+      max-retries: 2
+      initial-interval: 50ms
+      max-interval: 200ms
+  outbox:
+    poll-interval-ms: 50
+  orchestrator:
+    step-timeout: 1h
+    max-step-retries: 3
+    timeout-scan-interval-ms: 3600000
+
+payment:
+  max-amount: 1000
+
+inventory:
+  max-quantity-per-order: 5

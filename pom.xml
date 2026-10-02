@@ -20,16 +20,22 @@
     <modules>
         <module>saga-messages</module>
         <module>saga-common</module>
+        <module>saga-test-support</module>
         <module>order-service</module>
         <module>payment-service</module>
         <module>inventory-service</module>
         <module>saga-orchestrator-service</module>
+        <module>coverage-report</module>
     </modules>
 
     <properties>
         <java.version>17</java.version>
         <spring-cloud-aws.version>3.4.2</spring-cloud-aws.version>
         <aws-msk-iam-auth.version>2.3.9</aws-msk-iam-auth.version>
+        <jacoco.version>0.8.13</jacoco.version>
+        <!-- Minimum coverage enforced per module by `mvn verify` -->
+        <coverage.line.minimum>0.95</coverage.line.minimum>
+        <coverage.branch.minimum>0.85</coverage.branch.minimum>
     </properties>
 
     <dependencyManagement>
@@ -56,6 +62,69 @@
                 <artifactId>saga-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.example.saga</groupId>
+                <artifactId>saga-test-support</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <excludes>
+                        <!-- main() bootstrap classes only -->
+                        <exclude>**/*Application.class</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <haltOnFailure>true</haltOnFailure>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${coverage.line.minimum}</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${coverage.branch.minimum}</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
